@@ -1,137 +1,185 @@
 import sys
 import json
-from pprint import pprint
+
 from bs4 import BeautifulSoup as bs
 import PySimpleGUI as GUI
 import requests
 
 
-# Абракадабра для имитации человекоподобности для сервера сайта
-
-
 class Parser:
-    GUI.theme('Kahyak')
+    GUI.theme('LightGreen5')
     GUI.set_options(font='Franklin 10')
-    WINDOW_SIZE = 1000, 600
+    WINDOW_SIZE = 1100, 650
     WINDOW_TITLE = 'Product Parser'
     DEFAULT_URL = 'https://mi-shop.com/ru/catalog/smartphones/'
-    PARAM_INPUT_SIZE = 15, 1
-    PARAM_TITLE_SIZE = 13, 1
-    TEXT_PARAM_SIZE = 12, 1
-    BUTTON_SIZE = 10, 1
-    BUTTON_CLEAR_PAD = 18,0
-    OUTPUT_TEXTBOX_PAD = 15, 15
+    PARAM_INPUT_SIZE = 16, 1
+    PARAM_TITLE_SIZE = 11, 1
+    BUTTON_SIZE = 9, 1
+    OUTPUT_TEXTBOX_PAD = 5, 10
+    DROPDOWN_MENU_SIZE = 14, 1
+    CONTAINER_TYPES = ['div', 'span', 'section']
+    SELECTOR_TYPES = ['class', 'text', 'name', 'id']
     USER_AGENT_HEADER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36  \
                         (KHTML, like Gecko) Chrome/100.0.4896.160 YaBrowser/22.5.3.684 \
                         Yowser/2.5 Safari/537.36'
 
     def __init__(self):
+        # Input
+        url_input = GUI.Input(default_text=self.DEFAULT_URL, expand_x=True, key='-URL-')
+        request_btn = GUI.Button('Request', size=self.BUTTON_SIZE, key='-REQUEST-')
+        open_btn = GUI.Button('Open', size=self.BUTTON_SIZE, key='-OPEN-')
+        show_page_btn = GUI.Button('Show Page', size=self.BUTTON_SIZE, key='-PAGE-', disabled=True)
+        
+        # Find
+        find_button = GUI.Button('Find', size=self.BUTTON_SIZE, key='-FIND-', disabled=True)
+        find_container = GUI.Text(text='Container type:', size=self.PARAM_TITLE_SIZE)
+        find_selector_type = GUI.Text(text='Selector type:', size=self.PARAM_TITLE_SIZE)
+        find_selector_name = GUI.Text(text='Selector name:', size=self.PARAM_TITLE_SIZE)
+        param_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[0], key='-CONTAINER-', size=self.DROPDOWN_MENU_SIZE)
+        param_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-SELECTOR_TYPE-', size=self.DROPDOWN_MENU_SIZE)
+        param_selector_name = GUI.Input(default_text='product-card__body', size=self.PARAM_INPUT_SIZE, key='-SELECTOR_NAME-')
+        find_column = GUI.Column([
+            [find_container, param_container],
+            [find_selector_type, param_selector_type],
+            [find_selector_name, param_selector_name],
+            [find_button],
+        ])
+        # Parse
+        parse_btn = GUI.Button('Parse', key='-PARSE-', size=self.BUTTON_SIZE, disabled=True)
+        parse_title = GUI.Text(text='', size=self.PARAM_TITLE_SIZE)
+        parse_container = GUI.Text(text='Container type:', size=self.PARAM_TITLE_SIZE)
+        parse_selector_type = GUI.Text(text='Selector type:', size=self.PARAM_TITLE_SIZE)
+        parse_selector_name = GUI.Text(text='Selector name:', size=self.PARAM_TITLE_SIZE)
+        parse_names = GUI.Text(text='Save as:', size=self.PARAM_TITLE_SIZE)
+        param_info_column = GUI.Column([
+            [parse_title],
+            [parse_container],
+            [parse_selector_type],
+            [parse_selector_name],
+            [parse_names],
+            [parse_btn],
+        ])
+        param_1_clear = GUI.Button('Clear', key='-CLEAR_PARAM_1-', size=self.BUTTON_SIZE)
+        param_1_title = GUI.Text(text='Parameter 1', size=self.PARAM_TITLE_SIZE)
+        param_1_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[0], key='-PARAM_CONTAINER_1-', size=self.DROPDOWN_MENU_SIZE)
+        param_1_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-PARAM_SELECTOR_TYPE_1-', size=self.DROPDOWN_MENU_SIZE)
+        param_1_selector_name = GUI.Input(default_text='product-card__type', key='-PARAM_SELECTOR_NAME_1-', size=self.PARAM_INPUT_SIZE)
+        param_1_name = GUI.Input(default_text='Категория',key='-PARAM_NAME_1-', size=self.PARAM_INPUT_SIZE)
+        param_1_column = GUI.Column([
+            [param_1_title],
+            [param_1_container],
+            [param_1_selector_type],
+            [param_1_selector_name],
+            [param_1_name],
+            [param_1_clear],
+        ])
+        param_2_clear = GUI.Button('Clear', key='-CLEAR_PARAM_2-', size=self.BUTTON_SIZE)
+        param_2_title = GUI.Text(text='Parameter 2', size=self.PARAM_TITLE_SIZE)
+        param_2_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[0], key='-PARAM_CONTAINER_2-', size=self.DROPDOWN_MENU_SIZE)
+        param_2_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-PARAM_SELECTOR_TYPE_2-', size=self.DROPDOWN_MENU_SIZE)
+        param_2_selector_name = GUI.Input(default_text='product-card__title', key='-PARAM_SELECTOR_NAME_2-', size=self.PARAM_INPUT_SIZE)
+        param_2_name = GUI.Input(default_text='Наименование',key='-PARAM_NAME_2-', size=self.PARAM_INPUT_SIZE)
+        param_2_column = GUI.Column([
+            [param_2_title],
+            [param_2_container],
+            [param_2_selector_type],
+            [param_2_selector_name],
+            [param_2_name],
+            [param_2_clear],
+        ])
+        param_3_clear = GUI.Button('Clear', key='-CLEAR_PARAM_3-', size=self.BUTTON_SIZE)
+        param_3_title = GUI.Text(text='Parameter 3', size=self.PARAM_TITLE_SIZE)
+        param_3_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[1], key='-PARAM_CONTAINER_3-', size=self.DROPDOWN_MENU_SIZE)
+        param_3_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-PARAM_SELECTOR_TYPE_3-', size=self.DROPDOWN_MENU_SIZE)
+        param_3_selector_name = GUI.Input(default_text='price__new', key='-PARAM_SELECTOR_NAME_3-', size=self.PARAM_INPUT_SIZE)
+        param_3_name = GUI.Input(default_text='Цена',key='-PARAM_NAME_3-', size=self.PARAM_INPUT_SIZE)
+        param_3_column = GUI.Column([
+            [param_3_title],
+            [param_3_container],
+            [param_3_selector_type],
+            [param_3_selector_name],
+            [param_3_name],
+            [param_3_clear],
+        ])
+        param_4_clear = GUI.Button('Clear', key='-CLEAR_PARAM_4-', size=self.BUTTON_SIZE)
+        param_4_title = GUI.Text(text='Parameter 4', size=self.PARAM_TITLE_SIZE)
+        param_4_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[0], key='-PARAM_CONTAINER_4-', size=self.DROPDOWN_MENU_SIZE)
+        param_4_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-PARAM_SELECTOR_TYPE_4-', size=self.DROPDOWN_MENU_SIZE)
+        param_4_selector_name = GUI.Input(default_text='product-card__reviews', key='-PARAM_SELECTOR_NAME_4-', size=self.PARAM_INPUT_SIZE)
+        param_4_name = GUI.Input(default_text='Популярность',key='-PARAM_NAME_4-', size=self.PARAM_INPUT_SIZE)
+        param_4_column = GUI.Column([
+            [param_4_title],
+            [param_4_container],
+            [param_4_selector_type],
+            [param_4_selector_name],
+            [param_4_name],
+            [param_4_clear],
+        ])
+        param_5_clear = GUI.Button('Clear', key='-CLEAR_PARAM_5-', size=self.BUTTON_SIZE)
+        param_5_title = GUI.Text(text='Parameter 5', size=self.PARAM_TITLE_SIZE)
+        param_5_container = GUI.Combo(values=self.CONTAINER_TYPES, default_value=self.CONTAINER_TYPES[0], key='-PARAM_CONTAINER_5-', size=self.DROPDOWN_MENU_SIZE)
+        param_5_selector_type = GUI.Combo(values=self.SELECTOR_TYPES, default_value=self.SELECTOR_TYPES[0], key='-PARAM_SELECTOR_TYPE_5-', size=self.DROPDOWN_MENU_SIZE)
+        param_5_selector_name = GUI.Input(default_text='product-card__evaluation', key='-PARAM_SELECTOR_NAME_5-', size=self.PARAM_INPUT_SIZE)
+        param_5_name = GUI.Input(default_text='Оценка',key='-PARAM_NAME_5-', size=self.PARAM_INPUT_SIZE)
+        param_5_column = GUI.Column([
+            [param_5_title],
+            [param_5_container],
+            [param_5_selector_type],
+            [param_5_selector_name],
+            [param_5_name],
+            [param_5_clear],
+        ])
+        #  Output
+        event_msg = GUI.Text(text='', enable_events=True, key='-MESSAGE-')
+        output_box = GUI.Multiline(key='-OUTPUT-', disabled=True, expand_x=True, expand_y=True, pad=self.OUTPUT_TEXTBOX_PAD)
+        save_btn = GUI.Button('Save',  key='-SAVE-', size=self.BUTTON_SIZE, disabled=True)
+        clear_btn = GUI.Button('Clear', key='-CLEAR-', size=self.BUTTON_SIZE)
+        close_btn = GUI.Button('Close', key='-CLOSE-', size=self.BUTTON_SIZE)
+
+        layout = [
+            [open_btn, request_btn, url_input, show_page_btn],
+            [GUI.HorizontalSeparator()],
+            [find_column, GUI.Push(), param_info_column, param_1_column, param_2_column, param_3_column, param_4_column, param_5_column],
+            [GUI.HorizontalSeparator()],
+            [event_msg],
+            [output_box],
+            [save_btn, GUI.Push(), clear_btn, close_btn],
+        ]
+        
         # Data storage
         self.page = None
         self.data = []
         self.clean_data = []
 
-        # Input
-        BUTTON_REQUEST = GUI.Button('Request', size=self.BUTTON_SIZE, key='-REQUEST-')
-        INPUT_URL = GUI.Input(default_text=self.DEFAULT_URL, expand_x=True, key='-URL-')
-        BUTTON_OPEN = GUI.Button('Open', size=self.BUTTON_SIZE, key='-OPEN-')
-        BUTTON_SHOW_PAGE = GUI.Button('Show Page', size=self.BUTTON_SIZE, key='-PAGE-')
-        
-        # Find
-        BUTTON_FIND = GUI.Button('Find', size=self.BUTTON_SIZE, key='-FIND-')
-        TEXT_FIND = GUI.Text(text='', size=self.TEXT_PARAM_SIZE)
-        TEXT_FIND_CONTAINER = GUI.Text(text='Container type:', size=self.TEXT_PARAM_SIZE)
-        INPUT_FIND_CONTAINER = GUI.Input(default_text='div', size=self.PARAM_INPUT_SIZE, key='-CONTAINER-')
-        TEXT_FIND_SELECTOR_TYPE = GUI.Text(text='Selector type:', size=self.TEXT_PARAM_SIZE)
-        INPUT_FIND_SELECTOR_TYPE = GUI.Input(default_text='class', size=self.PARAM_INPUT_SIZE, key='-SELECTOR_TYPE-')
-        TEXT_FIND_SELECTOR_NAME = GUI.Text(text='Selector name:', size=self.TEXT_PARAM_SIZE)
-        INPUT_FIND_SELECTOR_NAME = GUI.Input(default_text='product-card__body', size=self.PARAM_INPUT_SIZE, key='-SELECTOR_NAME-')
-
-        # Parse
-        BUTTON_PARSE = GUI.Button('Parse', key='-PARSE-', size=self.BUTTON_SIZE)
-        TEXT_PARSE = GUI.Text(text='', size=self.TEXT_PARAM_SIZE)
-        TEXT_PARSE_CONTAINER = GUI.Text(text='Container type:', size=self.TEXT_PARAM_SIZE)
-        TEXT_PARSE_SELECTOR_TYPE = GUI.Text(text='Selector type:', size=self.TEXT_PARAM_SIZE)
-        TEXT_PARSE_SELECTOR_NAME = GUI.Text(text='Selector name:', size=self.TEXT_PARAM_SIZE)
-        TEXT_PARAM_NAME = GUI.Text(text='Save as:', size=self.TEXT_PARAM_SIZE)
-        
-        BUTTON_CLEAR_1 = GUI.Button('Clear', key='-CLEAR_PARAM_1-', size=self.BUTTON_SIZE, pad=self.BUTTON_CLEAR_PAD)
-        TEXT_PARAM_1 = GUI.Text(text='Parameter 1', size=self.PARAM_TITLE_SIZE, justification='center')
-        INPUT_PARSE_CONTAINER_1 = GUI.Input(default_text='div', key='-PARAM_CONTAINER_1-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_TYPE_1 = GUI.Input(default_text='class', key='-PARAM_SELECTOR_TYPE_1-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_NAME_1 = GUI.Input(default_text='product-card__type', key='-PARAM_SELECTOR_NAME_1-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_PARAM_NAME_1 = GUI.Input(default_text='Категория',key='-PARAM_NAME_1-', size=self.PARAM_INPUT_SIZE)
-
-        BUTTON_CLEAR_2 = GUI.Button('Clear', key='-CLEAR_PARAM_2-', size=self.BUTTON_SIZE, pad=self.BUTTON_CLEAR_PAD)
-        TEXT_PARAM_2 = GUI.Text(text='Parameter 2', size=self.PARAM_TITLE_SIZE, justification='center')
-        INPUT_PARSE_CONTAINER_2 = GUI.Input(default_text='div', key='-PARAM_CONTAINER_2-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_TYPE_2 = GUI.Input(default_text='class', key='-PARAM_SELECTOR_TYPE_2-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_NAME_2 = GUI.Input(default_text='product-card__title', key='-PARAM_SELECTOR_NAME_2-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_PARAM_NAME_2 = GUI.Input(default_text='Наименование',key='-PARAM_NAME_2-', size=self.PARAM_INPUT_SIZE)
-
-        BUTTON_CLEAR_3 = GUI.Button('Clear', key='-CLEAR_PARAM_3-', size=self.BUTTON_SIZE, pad=self.BUTTON_CLEAR_PAD)
-        TEXT_PARAM_3 = GUI.Text(text='Parameter 3', size=self.PARAM_TITLE_SIZE, justification='center')
-        INPUT_PARSE_CONTAINER_3 = GUI.Input(default_text='span', key='-PARAM_CONTAINER_3-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_TYPE_3 = GUI.Input(default_text='class', key='-PARAM_SELECTOR_TYPE_3-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_NAME_3 = GUI.Input(default_text='price__new', key='-PARAM_SELECTOR_NAME_3-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_PARAM_NAME_3 = GUI.Input(default_text='Цена',key='-PARAM_NAME_3-', size=self.PARAM_INPUT_SIZE)
-
-        BUTTON_CLEAR_4 = GUI.Button('Clear', key='-CLEAR_PARAM_4-', size=self.BUTTON_SIZE, pad=self.BUTTON_CLEAR_PAD)
-        TEXT_PARAM_4 = GUI.Text(text='Parameter 4', size=self.PARAM_TITLE_SIZE, justification='center')
-        INPUT_PARSE_CONTAINER_4 = GUI.Input(default_text='div', key='-PARAM_CONTAINER_4-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_TYPE_4 = GUI.Input(default_text='class', key='-PARAM_SELECTOR_TYPE_4-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_NAME_4 = GUI.Input(default_text='product-card__reviews', key='-PARAM_SELECTOR_NAME_4-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_PARAM_NAME_4 = GUI.Input(default_text='Популярность',key='-PARAM_NAME_4-', size=self.PARAM_INPUT_SIZE)
-
-        BUTTON_CLEAR_5 = GUI.Button('Clear', key='-CLEAR_PARAM_5-', size=self.BUTTON_SIZE, pad=self.BUTTON_CLEAR_PAD)
-        TEXT_PARAM_5 = GUI.Text(text='Parameter 5', size=self.PARAM_TITLE_SIZE, justification='center')
-        INPUT_PARSE_CONTAINER_5 = GUI.Input(default_text='div', key='-PARAM_CONTAINER_5-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_TYPE_5 = GUI.Input(default_text='class', key='-PARAM_SELECTOR_TYPE_5-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_SELECTOR_NAME_5 = GUI.Input(default_text='product-card__evaluation', key='-PARAM_SELECTOR_NAME_5-', size=self.PARAM_INPUT_SIZE)
-        INPUT_PARSE_PARAM_NAME_5 = GUI.Input(default_text='Оценка',key='-PARAM_NAME_5-', size=self.PARAM_INPUT_SIZE)
-        
-        #  Output
-        EVENT_MESSAGE_START = GUI.Text(text='Event message:')
-        EVENT_MESSAGE = GUI.Text(text='', enable_events=True, key='-MESSAGE-')
-        OUTPUT_TEXTBOX = GUI.Multiline(key='-OUTPUT-', disabled=True, expand_x=True, expand_y=True, pad=self.OUTPUT_TEXTBOX_PAD)
-
-        BUTTON_SAVE = GUI.Button('Save',  key='-SAVE-', size=self.BUTTON_SIZE)
-        BUTTON_CLEAR = GUI.Button('Clear', key='-CLEAR-', size=self.BUTTON_SIZE)
-        BUTTON_CLOSE = GUI.Button('Close', key='-CLOSE-', size=self.BUTTON_SIZE)
-
-        LAYOUT = [
-            [BUTTON_OPEN, BUTTON_REQUEST, INPUT_URL],
-            [BUTTON_SHOW_PAGE, GUI.Push(), TEXT_PARSE, TEXT_PARAM_1, TEXT_PARAM_2, TEXT_PARAM_3, TEXT_PARAM_4, TEXT_PARAM_5],
-            [TEXT_FIND_CONTAINER, INPUT_FIND_CONTAINER, GUI.Push(), TEXT_PARSE_CONTAINER, INPUT_PARSE_CONTAINER_1, INPUT_PARSE_CONTAINER_2, INPUT_PARSE_CONTAINER_3, INPUT_PARSE_CONTAINER_4, INPUT_PARSE_CONTAINER_5],
-            [TEXT_FIND_SELECTOR_TYPE, INPUT_FIND_SELECTOR_TYPE, GUI.Push(),TEXT_PARSE_SELECTOR_TYPE, INPUT_PARSE_SELECTOR_TYPE_1, INPUT_PARSE_SELECTOR_TYPE_2, INPUT_PARSE_SELECTOR_TYPE_3, INPUT_PARSE_SELECTOR_TYPE_4, INPUT_PARSE_SELECTOR_TYPE_5],
-            [TEXT_FIND_SELECTOR_NAME, INPUT_FIND_SELECTOR_NAME, GUI.Push(),TEXT_PARSE_SELECTOR_NAME, INPUT_PARSE_SELECTOR_NAME_1, INPUT_PARSE_SELECTOR_NAME_2, INPUT_PARSE_SELECTOR_NAME_3, INPUT_PARSE_SELECTOR_NAME_4, INPUT_PARSE_SELECTOR_NAME_5],
-            [GUI.Push(), TEXT_PARAM_NAME, INPUT_PARSE_PARAM_NAME_1, INPUT_PARSE_PARAM_NAME_2, INPUT_PARSE_PARAM_NAME_3, INPUT_PARSE_PARAM_NAME_4, INPUT_PARSE_PARAM_NAME_5],
-            [BUTTON_FIND, GUI.Push(), BUTTON_PARSE, BUTTON_CLEAR_1, BUTTON_CLEAR_2, BUTTON_CLEAR_3, BUTTON_CLEAR_4, BUTTON_CLEAR_5],
-            [EVENT_MESSAGE_START, EVENT_MESSAGE],
-            [OUTPUT_TEXTBOX],
-            [BUTTON_SAVE, GUI.Push(), BUTTON_CLEAR, BUTTON_CLOSE],
-        ]
         self.window = GUI.Window(
             title=self.WINDOW_TITLE,
-            layout=LAYOUT,
+            layout=layout,
             size=self.WINDOW_SIZE,
         )
+        
 
     def run(self):
         while True:
             event, values = self.window.read()
 
-            if event == '-OPEN-':
-                self.load_data(source=GUI.popup_get_file('Open', no_window=True))
+            if event in ('-OPEN-', '-REQUEST-'):
+                if event == '-OPEN-':
+                    self.load_data(source=GUI.popup_get_file('Open', no_window=True))
+                
+                elif event == '-REQUEST-':
+                    self.request_data(source=values['-URL-'])
 
-            if event == '-REQUEST-':
-                self.request_data(source=values['-URL-'])
+                if self.page:
+                    self.window['-FIND-'].update(disabled=False)
+                    self.window['-PAGE-'].update(disabled=False)
 
             if event == '-FIND-':
                 self.find_data(
                     container=values['-CONTAINER-'],
                     attrs={values['-SELECTOR_TYPE-']: values['-SELECTOR_NAME-']},
                 )
+                if self.data:
+                    self.window['-PARSE-'].update(disabled=False)
             
             if event == '-PAGE-':
                 if self.page:
@@ -162,6 +210,8 @@ class Parser:
 
                 if not stop:
                     self.parse_data(params)
+                    if self.clean_data:
+                        self.window['-SAVE-'].update(disabled=False)
 
             if event in [f'-CLEAR_PARAM_{i}-' for i in range(1, 6)]:
                 param_number = event.split('_')[-1].replace('-','')
@@ -173,7 +223,7 @@ class Parser:
             if event == '-CLEAR-':
                 self.clear_data()
 
-            if event in [GUI.WIN_CLOSED, '-CLOSE-']:
+            if event in (GUI.WIN_CLOSED, '-CLOSE-'):
                 break
 
     def load_data(self, source):
@@ -230,10 +280,11 @@ class Parser:
     def clear_data(self):
         self.window['-MESSAGE-'].update('')
         self.window['-OUTPUT-'].update('')
-        self.page = None
         self.data = []
+        self.window['-PARSE-'].update(disabled=True)
         self.clean_data = []
-
+        self.window['-SAVE-'].update(disabled=True)
+    
     def parse_data(self, params):
         if not self.data:
             self.window['-MESSAGE-'].update('no data to parse')
