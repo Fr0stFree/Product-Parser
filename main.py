@@ -25,16 +25,17 @@ class Parser:
                         Yowser/2.5 Safari/537.36'
 
     def __init__(self):
-        # Input
+        # Input elements layout
+        menu = GUI.Menu([
+            ['Configuration', ['Load::conf', 'Save::conf']],
+        ])
         url_input = GUI.Input(default_text=self.DEFAULT_URL, expand_x=True, key='-URL-')
         request_btn = GUI.Button('Request', size=self.BUTTON_SIZE, key='-REQUEST-')
         open_btn = GUI.Button('Open', size=self.BUTTON_SIZE, key='-OPEN-')
         show_page_btn = GUI.Button('Show Page', size=self.BUTTON_SIZE, key='-PAGE-', disabled=True)
         
-        # Find
+        # Searching elements layout
         find_all_btn = GUI.Button('Find all', size=self.BUTTON_SIZE, key='-FIND_ALL-', disabled=True)
-        find_first_btn = GUI.Button('Find first', size=self.BUTTON_SIZE, key='-FIND_FIRST-', disabled=True)
-        find_parent_btn = GUI.Button('Find parent', size=self.BUTTON_SIZE, key='-FIND_PARENT-', disabled=True)
         find_container = GUI.Text(text='Container type:', size=self.PARAM_TITLE_SIZE)
         find_selector_type = GUI.Text(text='Selector type:', size=self.PARAM_TITLE_SIZE)
         find_selector_name = GUI.Text(text='Selector name:', size=self.PARAM_TITLE_SIZE)
@@ -45,9 +46,9 @@ class Parser:
             [find_container, param_container],
             [find_selector_type, param_selector_type],
             [find_selector_name, param_selector_name],
-            [find_first_btn, find_all_btn, find_parent_btn],
+            [find_all_btn],
         ])
-        # Parse
+        # Parsing elements layout
         parse_btn = GUI.Button('Parse', key='-PARSE-', size=self.BUTTON_SIZE, disabled=True)
         parse_title = GUI.Text(text='', size=self.PARAM_TITLE_SIZE)
         parse_container = GUI.Text(text='Container type:', size=self.PARAM_TITLE_SIZE)
@@ -132,29 +133,30 @@ class Parser:
             [param_5_name],
             [param_5_clear],
         ])
-        #  Output
-        event_msg = GUI.Text(text='', enable_events=True, key='-MESSAGE-')
-        output_box = GUI.Multiline(key='-OUTPUT-', disabled=True, expand_x=True, expand_y=True, pad=self.OUTPUT_TEXTBOX_PAD)
+        #  Output elements layout
+        event_box = GUI.Multiline(key='-MESSAGE-', disabled=True, size=(30, 23), reroute_stdout=True, autoscroll=True, no_scrollbar=True)
+        output_box = GUI.Multiline(key='-OUTPUT-', disabled=True, size=(120, 23))
         save_json_btn = GUI.Button('Save .json',  key='-SAVE_JSON-', size=self.BUTTON_SIZE, disabled=True)
         save_xlsx_btn = GUI.Button('Save .xlsx',  key='-SAVE_XLSX-', size=self.BUTTON_SIZE, disabled=True)
         clear_btn = GUI.Button('Clear', key='-CLEAR-', size=self.BUTTON_SIZE)
         close_btn = GUI.Button('Close', key='-CLOSE-', size=self.BUTTON_SIZE)
 
         layout = [
+            [menu],
             [open_btn, request_btn, url_input, show_page_btn],
             [GUI.HorizontalSeparator()],
             [find_column, GUI.Push(), param_info_column, param_1_column, param_2_column, param_3_column, param_4_column, param_5_column],
             [GUI.HorizontalSeparator()],
-            [event_msg],
-            [output_box],
+            [output_box, GUI.Push(), event_box],
             [save_json_btn, save_xlsx_btn, GUI.Push(), clear_btn, close_btn],
         ]
+        # These keys shouldn't be saved in conf file
+        self.not_conf_keys = [event_box.key, output_box.key]
         
         # Data storage
         self.page = None
         self.data = []
         self.clean_data = []
-
         self.window = GUI.Window(
             title=self.WINDOW_TITLE,
             layout=layout,
@@ -175,16 +177,21 @@ class Parser:
 
                 if self.page:
                     self.window['-FIND_ALL-'].update(disabled=False)
-                    # Doesn't work yet
-                    # self.window['-FIND_FIRST-'].update(disabled=False)
                     self.window['-PAGE-'].update(disabled=False)
 
-            if event in ('-FIND_ALL-', '-FIND_FIRST-'):
+            if event == 'Load::conf':
+                self.load_conf()
 
+            if event == 'Save::conf':
+                # Preparing c by making the dict with needed parameters
+                conf = {key: value for key, value in values.items() 
+                        if key not in self.not_conf_keys and isinstance(key, str)}
+                self.save_conf(conf)
+
+            if event == '-FIND_ALL-':
                 self.find_data(
                     container=values['-CONTAINER-'],
                     attrs={values['-SELECTOR_TYPE-']: values['-SELECTOR_NAME-']},
-                    single=event=='-FIND_FIRST-',
                 )
                 if self.data:
                     self.window['-PARSE-'].update(disabled=False)
@@ -214,7 +221,7 @@ class Parser:
 
                     elif any(fields):
                         stop = True
-                        self.window['-MESSAGE-'].update(f'not all fields have been completed in the column №{param_number}')
+                        self.window['-MESSAGE-'].update(f'column №{param_number} is not completed')
 
                 if not stop:
                     self.parse_data(params)
@@ -242,53 +249,44 @@ class Parser:
         if source:
             with open(source, mode='r', encoding='utf-8') as html_file:
                 self.page = bs(html_file, 'html.parser')
-            self.window['-MESSAGE-'].update(f"collecting data from '{source}'")
+            print('data collected')
             self.window['-OUTPUT-'].update(self.page.prettify())
 
-
     def request_data(self, source):
-        self.window['-MESSAGE-'].update(f"collecting data from '{source}'")
         try:
             session = requests.Session()
             session.headers['User-Agent'] = self.USER_AGENT_HEADER
             response = session.get(source)
-            self.window['-OUTPUT-'].update(response.content)
             self.page = bs(response.text, 'html.parser')
-
+            print('data collected')
+            self.window['-OUTPUT-'].update(self.page.prettify())
         except Exception as e:
-            self.window['-MESSAGE-'].update('some error occured')
-            self.window['-OUTPUT-'].update(e)
+            print(f'error occured:\n{e}')
         
-
-    def find_data(self, container, attrs, single):
+    def find_data(self, container, attrs):
         if not self.page:
-            self.window['-MESSAGE-'].update('page is not loaded')
+            print('page is not loaded')
             return
-        
-        if single:
-            self.data = self.page.find(container, attrs=attrs)
-            self.window['-MESSAGE-'].update(f'object is found')
-            self.window['-OUTPUT-'].update(self.data.prettify())
-        else:
-            self.data = self.page.find_all(container, attrs=attrs)
-            result = ''
-            for obj in self.data:
-                result += obj.prettify()
-            self.window['-MESSAGE-'].update(f'{len(self.data)} objects are found')
-            self.window['-OUTPUT-'].update(result)  
+
+        self.data = self.page.find_all(container, attrs=attrs)
+        result = ''
+        for obj in self.data:
+            result += obj.prettify()
+        print(f'{len(self.data)} objects are found')
+        self.window['-OUTPUT-'].update(result)
         
         if not self.data:
-            self.window['-MESSAGE-'].update('objects are not found')
+            print('objects are not found')
             self.window['-OUTPUT-'].update(self.page.prettify())
-            return    
+
 
     def parse_data(self, params):
         if not self.data:
-            self.window['-MESSAGE-'].update('no data to parse')
+            print('no data to parse')
             return
 
         if not params:
-            self.window['-MESSAGE-'].update('no parameters are set')
+            print('no parameters are set')
             return
 
         self.clean_data.clear()
@@ -301,40 +299,61 @@ class Parser:
                     value = None
                 buff[param['name']] = value
             self.clean_data.append(buff)
-
-        self.window['-MESSAGE-'].update('data have been parsed successfuly')
+        
+        print('data parsed')
         self.window['-OUTPUT-'].update(self.clean_data)
      
+    def save_conf(self, values):
+        path = GUI.popup_get_file('Save as', no_window=True, save_as=True)
+        if path:
+            path = path + '.json' if not path.endswith('.json') else path
+            with open(path, mode='w', encoding='utf-8') as file:
+                json.dump(values, file, ensure_ascii=False, indent=4)
+                print('conf saved')
+   
+    def load_conf(self):
+        path = GUI.popup_get_file('Load', no_window=True)
+        if path:
+            with open(path, mode='r', encoding='utf-8') as file:
+                conf = json.load(file)
+                [self.window[key].update(value) for key, value in conf.items()]
+                print('conf loaded')
+
     def save_data_json(self):
         if not self.clean_data:
-            self.window['-MESSAGE-'].update('no clean data to save')
+            print('no parsed data to save')
             return
 
         path = GUI.popup_get_file('Save as', no_window=True, save_as=True)
-        path = f'{path}.json' if not path.endswith('.json') else path
-        with open(path, mode='w', encoding='utf-8') as file:
-            json.dump(self.clean_data, file, ensure_ascii=False, indent=4)
+        if path:
+            path = path + '.json' if not path.endswith('.json') else path
+            with open(path, mode='w', encoding='utf-8') as file:
+                json.dump(self.clean_data, file, ensure_ascii=False, indent=4)
+                print('data saved')
 
 
     def save_data_xlsx(self):
-        my_wb = openpyxl.Workbook()
-        my_sheet = my_wb.active
+        if not self.clean_data:
+            print('no parsed data to save')
+            return
         
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
         # Save keys in the first row
-        for ind_param, param in enumerate(self.clean_data[0]):
-            my_sheet.cell(row=1, column=ind_param+1).value = param
+        for column, key in enumerate(self.clean_data[0].keys()):
+            sheet.cell(row=1, column=column+1).value = key
 
         # Save values in next rows 
-        for ind_obj, obj in enumerate(self.clean_data):
-            for ind_param, value in enumerate(obj.values()):
-                my_sheet.cell(row=ind_obj+2, column=ind_param+1).value = value
-
+        for row, obj in enumerate(self.clean_data):
+            for column, value in enumerate(obj.values()):
+                sheet.cell(row=row+2, column=column+1).value = value
 
         path = GUI.popup_get_file('Save as', no_window=True, save_as=True)
-        path = f'{path}.xlsx' if not path.endswith('.xlsx') else path
-        my_wb.save(path)
+        if path:
+            path = f'{path}.xlsx' if not path.endswith('.xlsx') else path
+            workbook.save(path)
+            print('data saved')
         
-
     def clear_param(self, param_number):
         self.window[f'-PARAM_CONTAINER_{param_number}-'].update('')
         self.window[f'-PARAM_SELECTOR_TYPE_{param_number}-'].update('')
@@ -350,7 +369,6 @@ class Parser:
         self.window['-SAVE_JSON-'].update(disabled=True)
         self.window['-SAVE_XLSX-'].update(disabled=True)
     
-
 
 if __name__ == '__main__':
     parser = Parser()
