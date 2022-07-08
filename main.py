@@ -179,10 +179,15 @@ class Parser:
 
             if event in ('-OPEN-', '-REQUEST-'):
                 if event == '-OPEN-':
-                    self.load_data(source=GUI.popup_get_file('Open', no_window=True))
+                    path = GUI.popup_get_file('Open', no_window=True)
+                    if path:
+                        self.load_data(source=path)
                 
                 elif event == '-REQUEST-':
-                    self.request_data(source=values['-URL-'], pages=values['-PAGE_NUMBER-'])
+                    url = values['-URL-']
+                    pages = values['-PAGE_NUMBER-']
+                    if pages and url:
+                        self.request_data(source=url, pages=pages)
 
                 if self.page:
                     self.window['-FIND_ALL-'].update(disabled=False)
@@ -201,7 +206,7 @@ class Parser:
                 if self.page:
                     self.window['-OUTPUT-'].update(self.page)
                 else:
-                    self.window['-MESSAGE-'].update('page is not loaded')
+                    print('page is not loaded')
 
             if event == '-PARSE-':
                 params = []
@@ -222,7 +227,7 @@ class Parser:
 
                     elif any(fields):
                         stop = True
-                        self.window['-MESSAGE-'].update(f'column №{param_number} is not completed')
+                        print(f'column №{param_number} is not completed')
 
                 if not stop:
                     self.parse_data(params)
@@ -235,7 +240,9 @@ class Parser:
                 self.clear_param(param_number)
 
             if event == 'Load::conf':
-                self.load_conf()
+                path = GUI.popup_get_file('Load', no_window=True)
+                if path:
+                    self.load_conf()
 
             if event in ('-SAVE_JSON-', 'Save::conf'):
                 if event == '-SAVE_JSON-':
@@ -244,7 +251,9 @@ class Parser:
                     data = {key: value for key, value in values.items() 
                             if key not in self.not_conf_keys and isinstance(key, str)}
                 
-                self.save_json(data)
+                path = GUI.popup_get_file('Save as', no_window=True, save_as=True)
+                if path:
+                    self.save_json(data, path)
 
             if event == '-SAVE_XLSX-':
                 self.save_xlsx()
@@ -259,11 +268,10 @@ class Parser:
                 break
 
     def load_data(self, source):
-        if source:
-            with open(source, mode='r', encoding='utf-8') as html_file:
-                self.page = bs(html_file, 'html.parser')
+        with open(source, mode='r', encoding='utf-8') as html_file:
+            self.page = bs(html_file, 'html.parser')
             print('data collected')
-            self.window['-OUTPUT-'].update(self.page.prettify())
+        self.window['-OUTPUT-'].update(self.page.prettify())
 
     def request_data(self, source, pages):
         try:
@@ -324,21 +332,17 @@ class Parser:
         print('data parsed')
         self.window['-OUTPUT-'].update(self.clean_data)
 
-    def load_conf(self):
-        path = GUI.popup_get_file('Load', no_window=True)
-        if path:
-            with open(path, mode='r', encoding='utf-8') as file:
-                conf = json.load(file)
-                [self.window[key].update(value) for key, value in conf.items()]
-                print('conf loaded')
+    def load_conf(self, path):
+        with open(path, mode='r', encoding='utf-8') as file:
+            conf = json.load(file)
+            [self.window[key].update(value) for key, value in conf.items()]
+            print('conf loaded')
 
-    def save_json(self, data):
-        path = GUI.popup_get_file('Save as', no_window=True, save_as=True)
-        if path:
-            path = path + '.json' if not path.endswith('.json') else path
-            with open(path, mode='w', encoding='utf-8') as file:
-                json.dump(data, file, ensure_ascii=False, indent=4)
-                print('data saved')
+    def save_json(self, data, path):
+        path = path + '.json' if not path.endswith('.json') else path
+        with open(path, mode='w', encoding='utf-8') as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
+            print('data saved')
 
     def save_xlsx(self):
         if not self.clean_data:
