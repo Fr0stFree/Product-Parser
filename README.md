@@ -1,8 +1,3 @@
-### Hi there, I'm Danila!
-[![codewars](https://www.codewars.com/users/FrostFree/badges/large)](https://www.codewars.com/users/FrostFree)
-#### Python backend developer student from Russia 🇷🇺
-
----
 ### Парсер Продуктов
 
 Данная программа создавалась с целью сбора информации о товарах с сайта [MiShop](https://mi-shop.com/ru/).
