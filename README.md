@@ -9,6 +9,7 @@
 
 Заключительным этапом является парсинг каждой найденной карточки на параметры (например: цена, название, скидка, отзывы), соответствующие указанным CSS-селекторам (кнопка Parse). Можно указать до пяти параметров. При успешном парсинге карточек программа предложит сохранить полученные данные в формате .json или .xlsx (кнопки Save json и Save xlsx соответственно)
 
+![alt text](https://github.com/Fr0stFree/Product-parser/blob/main/screenshot.jpg?raw=true)
 
 ### Использованные технологии
 - [Python](https://github.com/python)
@@ -40,4 +41,3 @@ python -m pip install -r requirements.txt
 ```
 python main.py
 ```
-![alt text](https://github.com/Fr0stFree/Product-parser/blob/main/screenshot.jpg?raw=true)
